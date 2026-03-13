@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birthday Jigsaw & Secret Key</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&family=Afacad+Flux:wght@400;600&display=swap');
+
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #dcfd8b 0%, #bc84ee 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-family: 'Afacad Flux', sans-serif;
+            touch-action: none;
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .card-glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+            border: 4px solid #fff;
+        }
+
+        .photo-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 6px solid #ff823a;
+            object-fit: cover;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            background-color: #f1f5f9;
+        }
+
+        h1, h2 { font-family: 'Comfortaa', cursive; }
+
+        #puzzle-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+            background: #f1f5f9;
+            border: 2px dashed #cbd5e1;
+            border-radius: 20px;
+            overflow: visible;
+        }
+
+        .jigsaw-piece {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            background-size: 280px 280px;
+            cursor: grab;
+            z-index: 20;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.1s ease;
+        }
+
+        .jigsaw-piece.placed {
+            cursor: default;
+            box-shadow: none;
+            border-radius: 0;
+            z-index: 5;
+        }
+
+        .page { transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .page-hidden { opacity: 0; transform: translateY(30px) scale(0.95); pointer-events: none; position: absolute; }
+
+        #settings-drawer {
+            transition: transform 0.4s ease;
+            z-index: 150;
+        }
+        .hidden-drawer { transform: translateX(100%); }
+
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Settings Button -->
+    <button onclick="toggleSettings()" class="fixed top-6 right-6 z-[160] bg-white p-3 rounded-full shadow-xl hover:rotate-90 transition-transform">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+
+    <!-- PAGE 1: BIRTHDAY CARD -->
+    <div id="page-card" class="page card-glass w-full max-w-sm p-10 text-center space-y-6">
+        <img id="card-photo" src="https://images.unsplash.com/photo-1530103043960-ef38714abb15?w=300" class="photo-circle mx-auto" alt="Birthday">
+        <div class="space-y-2">
+            <h1 id="disp-name" class="text-3xl font-bold text-gray-800">Happy Birthday!</h1>
+            <p id="disp-date" class="text-sm font-bold text-purple-600 tracking-widest uppercase">Special Day</p>
+        </div>
+        <p id="disp-msg" class="text-gray-600 leading-relaxed">Sending you a world of happiness!</p>
+        <button onclick="nav('puzzle')" class="w-full py-4 bg-[#ff823a] text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-transform">
+            Unlock My Surprise 🎁
+        </button>
+    </div>
+
+    <!-- PAGE 2: JIGSAW PUZZLE -->
+    <div id="page-puzzle" class="page page-hidden card-glass w-full max-w-sm p-8 text-center space-y-4">
+        <h2 class="text-2xl font-bold text-gray-800">Step 1: The Picture</h2>
+        <p class="text-sm text-gray-500">Assemble the photo to move on!</p>
+        <div id="puzzle-container">
+            <div class="puzzle-slot" style="top:0; left:0;"></div>
+            <div class="puzzle-slot" style="top:0; left:140px;"></div>
+            <div class="puzzle-slot" style="top:140px; left:0;"></div>
+            <div class="puzzle-slot" style="top:140px; left:140px;"></div>
+        </div>
+        <button onclick="initPuzzle()" class="text-xs font-bold text-gray-400 uppercase">Reset Jigsaw</button>
+    </div>
+
+    <!-- PAGE 3: THE SECRET QUESTION -->
+    <div id="page-question" class="page page-hidden card-glass w-full max-w-sm p-10 text-center space-y-6">
+        <div class="text-5xl">🔐</div>
+        <h2 class="text-2xl font-bold text-gray-800">Step 2: Security Check</h2>
+        <p id="disp-question" class="text-gray-600 font-semibold italic">"What is our favorite pizza topping?"</p>
+        <input type="text" id="user-ans" placeholder="Type answer here..." class="w-full p-4 border-2 border-purple-100 rounded-2xl outline-none focus:border-purple-400 text-center">
+        <button onclick="checkAnswer()" class="w-full py-4 bg-[#bc84ee] text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-transform">
+            Verify & Unlock
+        </button>
+    </div>
+
+    <!-- FINAL POPUP -->
+    <div id="overlay" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-md pointer-events-none opacity-0 transition-opacity">
+        <div class="bg-white rounded-[3rem] p-12 text-center shadow-2xl max-w-xs mx-4 transform scale-50 transition-transform duration-500" id="modal">
+            <div class="text-7xl mb-6">🎂</div>
+            <h2 id="disp-pop-title" class="text-3xl font-bold text-pink-600 mb-2">Surprise!</h2>
+            <p id="disp-pop-msg" class="text-gray-600 mb-8 text-lg">You solved it! Have the best birthday ever!</p>
+            <button onclick="location.reload()" class="px-10 py-4 bg-gray-900 text-white font-bold rounded-2xl">Celebrate Again ✨</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS DRAWER -->
+    <div id="settings-drawer" class="fixed inset-y-0 right-0 w-full max-w-xs bg-white shadow-2xl p-8 overflow-y-auto hidden-drawer">
+        <div class="flex justify-between items-center mb-8 border-b pb-4">
+            <h2 class="text-xl font-bold">Edit Surprise</h2>
+            <button onclick="toggleSettings()" class="text-2xl">✕</button>
+        </div>
+        <div class="space-y-5">
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase">Custom Photo</label>
+                <div class="mt-1 flex items-center space-x-3">
+                    <button onclick="document.getElementById('in-photo').click()" class="px-4 py-2 bg-pink-100 text-pink-600 rounded-lg text-sm font-bold">Choose Image</button>
+                    <span id="photo-status" class="text-[10px] text-gray-400 truncate max-w-[120px]">Using default</span>
+                    <input type="file" id="in-photo" accept="image/*" class="hidden" onchange="handlePhoto(this)">
+                </div>
+            </div>
+
+            <div><label class="text-xs font-bold text-gray-400 uppercase">Name</label>
+            <input type="text" id="in-name" class="w-full p-3 bg-gray-50 rounded-xl outline-none" oninput="sync()"></div>
+            
+            <div><label class="text-xs font-bold text-gray-400 uppercase">Message</label>
+            <textarea id="in-msg" rows="2" class="w-full p-3 bg-gray-50 rounded-xl outline-none" oninput="sync()"></textarea></div>
+            
+            <div class="pt-4 border-t"><label class="text-xs font-bold text-pink-500 uppercase">Secret Question</label>
+            <input type="text" id="in-q" class="w-full p-3 bg-pink-50 rounded-xl outline-none" oninput="sync()"></div>
+            
+            <div><label class="text-xs font-bold text-pink-500 uppercase">Answer (The Key)</label>
+            <input type="text" id="in-a" class="w-full p-3 bg-pink-50 rounded-xl outline-none" oninput="sync()"></div>
+
+            <div><label class="text-xs font-bold text-purple-500 uppercase">Popup Title</label>
+            <input type="text" id="in-pt" class="w-full p-3 bg-purple-50 rounded-xl outline-none" oninput="sync()"></div>
+
+            <button onclick="copyLink()" class="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl mt-6">Generate Link 🔗</button>
+            <p class="text-[10px] text-center text-gray-400">Note: Uploaded images are kept local and might not be shared via link due to size limits.</p>
+        </div>
+    </div>
+
+    <script>
+        let correctAns = "Pepperoni";
+        let placed = 0;
+        let photoBase64 = "https://images.unsplash.com/photo-1530103043960-ef38714abb15?w=400";
+
+        function handlePhoto(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoBase64 = e.target.result;
+                    document.getElementById('card-photo').src = photoBase64;
+                    document.getElementById('photo-status').innerText = input.files[0].name;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function nav(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.add('page-hidden'));
+            document.getElementById('page-' + pageId).classList.remove('page-hidden');
+            if(pageId === 'puzzle') initPuzzle();
+        }
+
+        function initPuzzle() {
+            placed = 0;
+            const cont = document.getElementById('puzzle-container');
+            document.querySelectorAll('.jigsaw-piece').forEach(p => p.remove());
+
+            for (let i = 0; i < 4; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'jigsaw-piece';
+                const row = Math.floor(i / 2), col = i % 2;
+                piece.style.backgroundImage = `url(${photoBase64})`;
+                piece.style.backgroundPosition = `-${col * 140}px -${row * 140}px`;
+                
+                // Scatter pieces initially
+                piece.style.left = `${Math.random() * 100}px`;
+                piece.style.top = `${300 + Math.random() * 50}px`;
+                
+                drag(piece, i);
+                cont.appendChild(piece);
+            }
+        }
+
+        function drag(el, id) {
+            let x, y, ix, iy, dragging = false;
+            const start = (e) => {
+                if (el.classList.contains('placed')) return;
+                dragging = true; el.style.zIndex = 100;
+                const p = e.touches ? e.touches[0] : e;
+                x = p.clientX; y = p.clientY;
+                ix = parseInt(el.style.left); iy = parseInt(el.style.top);
+            };
+            const move = (e) => {
+                if (!dragging) return;
+                const p = e.touches ? e.touches[0] : e;
+                el.style.left = `${ix + (p.clientX - x)}px`;
+                el.style.top = `${iy + (p.clientY - y)}px`;
+            };
+            const end = () => {
+                if (!dragging) return;
+                dragging = false; el.style.zIndex = 20;
+                const tx = (id % 2) * 140, ty = Math.floor(id / 2) * 140;
+                const dist = Math.sqrt(Math.pow(parseInt(el.style.left)-tx,2)+Math.pow(parseInt(el.style.top)-ty,2));
+                if (dist < 40) {
+                    el.style.left = tx+'px'; el.style.top = ty+'px';
+                    el.classList.add('placed'); placed++;
+                    if(placed === 4) setTimeout(() => nav('question'), 600);
+                }
+            };
+            el.onmousedown = start; el.ontouchstart = start;
+            window.onmousemove = move; window.ontouchmove = move;
+            window.onmouseup = end; window.ontouchend = end;
+        }
+
+        function checkAnswer() {
+            const input = document.getElementById('user-ans').value.trim().toLowerCase();
+            if (input === correctAns.toLowerCase()) {
+                celebrate();
+                const over = document.getElementById('overlay');
+                over.classList.replace('opacity-0', 'opacity-100');
+                over.classList.remove('pointer-events-none');
+                document.getElementById('modal').style.transform = 'scale(1)';
+            } else {
+                const qPage = document.getElementById('page-question');
+                qPage.classList.add('shake');
+                setTimeout(() => qPage.classList.remove('shake'), 500);
+            }
+        }
+
+        function toggleSettings() { document.getElementById('settings-drawer').classList.toggle('hidden-drawer'); }
+
+        function sync() {
+            const name = document.getElementById('in-name').value || "Friend";
+            const msg = document.getElementById('in-msg').value || "Have a blast!";
+            const q = document.getElementById('in-q').value || "Secret Question?";
+            const pt = document.getElementById('in-pt').value || "Success!";
+            correctAns = document.getElementById('in-a').value || "Key";
+
+            document.getElementById('disp-name').innerText = `Happy Birthday, ${name}!`;
+            document.getElementById('disp-msg').innerText = msg;
+            document.getElementById('disp-question').innerText = `"${q}"`;
+            document.getElementById('disp-pop-title').innerText = pt;
+        }
+
+        function copyLink() {
+            const params = new URLSearchParams({
+                n: document.getElementById('in-name').value,
+                m: document.getElementById('in-msg').value,
+                q: document.getElementById('in-q').value,
+                a: document.getElementById('in-a').value,
+                pt: document.getElementById('in-pt').value
+            });
+            navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?${params.toString()}`);
+            alert("Settings link copied! 🎁 (Photo not included in URL due to size)");
+        }
+
+        window.onload = () => {
+            const p = new URLSearchParams(window.location.search);
+            if(p.has('n')) {
+                document.getElementById('in-name').value = p.get('n');
+                document.getElementById('in-msg').value = p.get('m');
+                document.getElementById('in-q').value = p.get('q');
+                document.getElementById('in-a').value = p.get('a');
+                document.getElementById('in-pt').value = p.get('pt');
+            } else {
+                document.getElementById('in-name').value = "Sarah";
+                document.getElementById('in-msg').value = "Wishing you a world of happiness!";
+                document.getElementById('in-q').value = "What is our favorite pizza topping?";
+                document.getElementById('in-a').value = "Pepperoni";
+                document.getElementById('in-pt').value = "You Got It!";
+            }
+            sync();
+            animate();
+        };
+
+        const canvas = document.getElementById('confetti-canvas'), ctx = canvas.getContext('2d');
+        let parts = []; const colors = ['#dcfd8b', '#bc84ee', '#ff823a', '#ffffff'];
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.onresize = resize; resize();
+        class Part {
+            constructor(burst) {
+                this.x = Math.random()*canvas.width; this.y = burst?canvas.height:Math.random()*canvas.height-canvas.height;
+                this.s = Math.random()*8+4; this.c = colors[Math.floor(Math.random()*colors.length)];
+                this.vx = (Math.random()*6-3)*(burst?3:1); this.vy = burst?-(Math.random()*15+5):(Math.random()*3+1);
+            }
+            update() { this.y += this.vy; this.x += this.vx; if(this.y>canvas.height+20){this.y=-20;this.x=Math.random()*canvas.width;} }
+            draw() { ctx.fillStyle=this.c; ctx.fillRect(this.x,this.y,this.s,this.s); }
+        }
+        for(let i=0;i<70;i++) parts.push(new Part(false));
+        function celebrate() { for(let i=0;i<60;i++) parts.push(new Part(true)); }
+        function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); parts.forEach(p=>{p.update();p.draw();}); requestAnimationFrame(animate); }
+    </script>
+</body>
+</html>
